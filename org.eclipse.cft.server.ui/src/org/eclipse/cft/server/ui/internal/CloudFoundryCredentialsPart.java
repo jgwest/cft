@@ -21,6 +21,8 @@
  ********************************************************************************/
 package org.eclipse.cft.server.ui.internal;
 
+import java.util.concurrent.TimeUnit;
+
 import org.eclipse.cft.server.core.internal.CloudFoundryBrandingExtensionPoint;
 import org.eclipse.cft.server.core.internal.CloudFoundryConstants;
 import org.eclipse.cft.server.core.internal.CloudFoundryPlugin;
@@ -48,6 +50,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
@@ -197,6 +200,9 @@ public class CloudFoundryCredentialsPart extends UIPart implements IPartChangeLi
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				cfServer.setSso(sso.getSelection());
+				if(sso.getSelection()) {
+					updatePromptTextWithSsoUrl2();
+				}
 				showPage(emailPasswordControl, passcodeControl);
 				updateUI(false);
 			}
@@ -208,7 +214,10 @@ public class CloudFoundryCredentialsPart extends UIPart implements IPartChangeLi
 			protected void setUpdatedSelectionInServer() {
 
 				super.setUpdatedSelectionInServer();
-				prompt.setText(CFUiUtil.getPromptText(cfServer));
+//				prompt.setText(CFUiUtil.getPromptText(cfServer));
+				if(sso.getSelection()) {
+					updatePromptTextWithSsoUrl2();
+				}
 				updateUI(false);
 			}
 
@@ -219,7 +228,8 @@ public class CloudFoundryCredentialsPart extends UIPart implements IPartChangeLi
 		String url = urlWidget.getURLSelection();
 		if (url != null) {
 			cfServer.setUrl(CFUiUtil.getUrlFromDisplayText(url));
-			prompt.setText(CFUiUtil.getPromptText(cfServer));
+//			updatePromptTextWithSsoUrl();
+//			prompt.setText(CFUiUtil.getPromptText(cfServer));
 		}
 
 		final Composite validateComposite = new Composite(composite, SWT.NONE);
@@ -280,6 +290,70 @@ public class CloudFoundryCredentialsPart extends UIPart implements IPartChangeLi
 			pageBook.showPage(emailPasswordControl);
 		}
 	}
+	
+	private void updatePromptTextWithSsoUrl2() {
+
+		CFUiUtil.runOnUIThreadUntilTimeout("Acquiring SSO URL", new Runnable() {
+
+			@Override
+			public void run() {
+				String url;
+				try {
+					long startTimeInNanos = System.nanoTime();
+					url = CloudFoundryClientFactory.getSsoUrl(cfServer.getUrl(), cfServer.isSelfSigned());
+					
+					final String ssoPromptText = CFUiUtil.getPromptText(url);
+					
+					System.out.println(TimeUnit.MILLISECONDS.convert(System.nanoTime() - startTimeInNanos, TimeUnit.NANOSECONDS));
+					
+					Display.getDefault().syncExec(new Runnable() {
+
+						@Override
+						public void run() {
+							prompt.setText(ssoPromptText);
+						}
+						
+					});				
+
+				}
+				catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+		} );
+		
+//		final CloudFoundryServer cfServerLocal = cfServer;
+//		
+//		Thread t = new Thread() {
+//			@Override
+//			public void run() {
+//				try {
+//					String url = CloudFoundryClientFactory.getSsoUrl(cfServerLocal .getUrl(), cfServerLocal .isSelfSigned());
+//					final String ssoPromptText = CFUiUtil.getPromptText(url);
+//					
+//					Display.getDefault().syncExec(new Runnable() {
+//
+//						@Override
+//						public void run() {
+//							prompt.setText(ssoPromptText);
+//						}
+//						
+//					});
+//					
+//				} catch (Exception e) {
+//					e.printStackTrace();
+//				}
+//				
+//			}
+//			
+//		};
+//		t.setDaemon(true);
+//		t.setName(CloudFoundryCredentialsPart.class.getName());
+//		t.start();
+	}
+	
 
 	private Control createPasscodeControl(Composite parent) {
 		Composite composite = new Composite(parent, SWT.NONE);
@@ -291,8 +365,7 @@ public class CloudFoundryCredentialsPart extends UIPart implements IPartChangeLi
 		gd = new GridData(SWT.FILL, SWT.FILL, true, false);
 		gd.horizontalSpan = 2;
 		prompt.setLayoutData(gd);
-		String ssoUrl = CFUiUtil.getPromptText(cfServer);
-		prompt.setText(ssoUrl);
+//		updatePromptTextWithSsoUrl();
 		prompt.addListener(SWT.Selection, new Listener() {
 			
 			@Override

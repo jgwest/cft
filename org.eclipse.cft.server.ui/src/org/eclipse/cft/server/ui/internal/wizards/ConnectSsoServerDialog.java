@@ -187,7 +187,7 @@ public class ConnectSsoServerDialog extends Dialog {
 		gd = new GridData(SWT.FILL, SWT.FILL, true, false);
 		gd.horizontalSpan = 2;
 		prompt.setLayoutData(gd);
-		String ssoUrl = CFUiUtil.getPromptText(cloudServer);
+		String ssoUrl = CFUiUtil.getPromptTextOld(cloudServer);
 		prompt.setText(ssoUrl);
 		prompt.addListener(SWT.Selection, new Listener() {
 			
